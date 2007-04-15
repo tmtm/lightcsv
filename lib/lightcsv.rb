@@ -1,10 +1,10 @@
-# = SimpleCSV
+# = LightCsv
 # CSV parser
 #
 # $Id$
 # Copyright:: 2007 (C) TOMITA Masahiro <tommy@tmtm.org>
 # License:: Ruby's
-# Homepage:: http://tmtm.org/ja/ruby/simplecsv
+# Homepage:: http://tmtm.org/ja/ruby/lightcsv
 
 require "strscan"
 
@@ -18,34 +18,31 @@ require "strscan"
 #
 # == 例
 # * CSVファイルのレコード毎にブロックを繰り返す。
-#     SimpleCSV.foreach(filename){|row| ...}
+#     LightCsv.foreach(filename){|row| ...}
 #   次と同じ。
-#     SimpleCSV.open(filename){|csv| csv.each{|row| ...}}
+#     LightCsv.open(filename){|csv| csv.each{|row| ...}}
 #
 # * CSVファイルの全レコードを返す。
-#     SimpleCSV.readlines(filename)  # => [[col1,col2,...],...]
+#     LightCsv.readlines(filename)  # => [[col1,col2,...],...]
 #   次と同じ。
-#     SimpleCSV.open(filename){|csv| csv.map}
+#     LightCsv.open(filename){|csv| csv.map}
 #
 # * CSV文字列のレコード毎にブロックを繰り返す。
-#     SimpleCSV.parse("a1,a2,..."){|row| ...}
+#     LightCsv.parse("a1,a2,..."){|row| ...}
 #   次と同じ。
-#     SimpleCSV.new("a1,a2,...").each{|row| ...}
+#     LightCsv.new("a1,a2,...").each{|row| ...}
 #
 # * CSV文字列の全レコードを返す。
-#     SimpleCSV.parse("a1,a2,...")  # => [[a1,a2,...],...]
+#     LightCsv.parse("a1,a2,...")  # => [[a1,a2,...],...]
 #   次と同じ。
-#     SimpleCSV.new("a1,a2,...").map
+#     LightCsv.new("a1,a2,...").map
 #
-class SimpleCSV
+class LightCsv
   include Enumerable
 
   # == パースできない形式の場合に発生する例外
   # MalformedCSVError#message は処理できなかった位置から 10バイト文の文字列を返す。
   class MalformedCSVError < RuntimeError; end
-
-  # ファイルから一度に読み込むバイト数
-  BUFSIZE = 64*1024
 
   # ファイルの各レコード毎にブロックを繰り返す。
   # ブロック引数はレコードを表す配列。
@@ -75,8 +72,8 @@ class SimpleCSV
     return nil
   end
 
-  # ファイルをオープンして SimpleCSV オブジェクトを返す。
-  # ブロックを与えた場合は SimpleCSV オブジェクトを引数としてブロックを実行する。
+  # ファイルをオープンして LightCsv オブジェクトを返す。
+  # ブロックを与えた場合は LightCsv オブジェクトを引数としてブロックを実行する。
   def self.open(filename, &block)
     f = File.open(filename)
     csv = self.new(f)
@@ -91,7 +88,7 @@ class SimpleCSV
     end
   end
 
-  # SimpleCSV オブジェクトを生成する。
+  # LightCsv オブジェクトを生成する。
   # _src_ は String か IO。
   def initialize(src)
     if src.kind_of? String then
@@ -102,9 +99,11 @@ class SimpleCSV
       @ss = StringScanner.new("")
     end
     @buf = ""
+    @bufsize = 64*1024
   end
+  attr_accessor :bufsize
 
-  # SimpleCSV オブジェクトに関連したファイルをクローズする。
+  # LightCsv オブジェクトに関連したファイルをクローズする。
   def close()
     @file.close if @file
   end
@@ -113,37 +112,31 @@ class SimpleCSV
   # 空行の場合は空配列([])を返す。
   # 空カラムは「"」で括られているか否かにかかわらず空文字列("")になる。
   def shift()
+    return nil if eof?
     cols = []
     while true
-      read_next_data if @ss.rest_size < 2
-      break if @ss.eos?
-
-      if @ss.match?(/\"/)
-        unless @ss.scan(/\"((?:\"\"|[^\"])*)\"/n)
+      if eof?
+        cols << ""
+        break
+      end
+      if @ss.scan(/\"/)
+        until @ss.scan(/(?:\"\"|[^\"])*\"/n)
           read_next_data or raise MalformedCSVError, @ss.rest[0,10]
-          next
         end
-        cols << @ss[1].gsub(/\"\"/, '"')
-        read_next_data if @ss.rest_size < 2
+        cols << @ss.matched.chop.gsub(/\"\"/, '"')
       else
         col = @ss.scan(/[^\",\r\n]*/n)
-        if @ss.rest_size < 2
-          @ss.unscan
-          unless read_next_data
-            @ss.terminate
-            cols << col
-            break
-          end
-          next
+        while @ss.eos? and read_next_data
+          col << @ss.scan(/[^\",\r\n]*/n)
         end
         cols << col
       end
+      read_next_data if @ss.rest_size < 2
       next if @ss.scan(/,/)
-      @ss.scan(/\r?\n|\r|\z/n) or raise MalformedCSVError, @ss.rest[0,10]
-      break
+      break if @ss.scan(/\r?\n|\r|\z/n)
+      raise MalformedCSVError, @ss.rest[0,10]
     end
-    return nil if cols.empty?
-    return [] if cols.size == 1 and cols[0].empty?
+    return [] if cols.size == 1 and cols.first.empty?
     return cols
   end
 
@@ -163,8 +156,12 @@ class SimpleCSV
 
   def read_next_data()
     return nil unless @file
-    r = @file.read(BUFSIZE, @buf)
-    @ss = StringScanner.new(@ss.rest + @buf) if r
+    r = @file.read(@bufsize, @buf)
+    @ss.string = @ss.rest + @buf if r
     return r
+  end
+
+  def eof?()
+    return (@ss.eos? and ! read_next_data)
   end
 end
