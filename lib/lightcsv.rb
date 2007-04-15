@@ -41,8 +41,8 @@ class LightCsv
   include Enumerable
 
   # == パースできない形式の場合に発生する例外
-  # MalformedCSVError#message は処理できなかった位置から 10バイト文の文字列を返す。
-  class MalformedCSVError < RuntimeError; end
+  # InvalidFormat#message は処理できなかった位置から 10バイト文の文字列を返す。
+  class InvalidFormat < RuntimeError; end
 
   # ファイルの各レコード毎にブロックを繰り返す。
   # ブロック引数はレコードを表す配列。
@@ -77,7 +77,7 @@ class LightCsv
   def self.open(filename, &block)
     f = File.open(filename)
     csv = self.new(f)
-    if block then
+    if block
       begin
         return block.call(csv)
       ensure
@@ -91,7 +91,7 @@ class LightCsv
   # LightCsv オブジェクトを生成する。
   # _src_ は String か IO。
   def initialize(src)
-    if src.kind_of? String then
+    if src.kind_of? String
       @file = nil
       @ss = StringScanner.new(src)
     else
@@ -112,18 +112,18 @@ class LightCsv
   # 空行の場合は空配列([])を返す。
   # 空カラムは「"」で括られているか否かにかかわらず空文字列("")になる。
   def shift()
-    return nil if eof?
+    return nil if @ss.eos? and ! read_next_data
     cols = []
     while true
-      if eof?
+      if @ss.eos? and ! read_next_data
         cols << ""
         break
       end
-      if @ss.scan(/\"/)
+      if @ss.scan(/\"/n)
         until @ss.scan(/(?:\"\"|[^\"])*\"/n)
-          read_next_data or raise MalformedCSVError, @ss.rest[0,10]
+          read_next_data or raise InvalidFormat, @ss.rest[0,10]
         end
-        cols << @ss.matched.chop.gsub(/\"\"/, '"')
+        cols << @ss.matched.chop.gsub(/\"\"/n, '"')
       else
         col = @ss.scan(/[^\",\r\n]*/n)
         while @ss.eos? and read_next_data
@@ -131,13 +131,17 @@ class LightCsv
         end
         cols << col
       end
-      read_next_data if @ss.rest_size < 2
-      next if @ss.scan(/,/)
-      break if @ss.scan(/\r?\n|\r|\z/n)
-      raise MalformedCSVError, @ss.rest[0,10]
+      unless @ss.scan(/,/n)
+        break if @ss.scan(/\r\n/n)
+        unless @ss.rest_size < 2 and read_next_data and @ss.scan(/,/n)
+          break if @ss.scan(/\r\n|\n|\r|\z/n)
+          read_next_data
+          raise InvalidFormat, @ss.rest[0,10]
+        end
+      end
     end
-    return [] if cols.size == 1 and cols.first.empty?
-    return cols
+    cols.clear if cols.size == 1 and cols.first.empty?
+    cols
   end
 
   # 各レコード毎にブロックを繰り返す。
@@ -155,13 +159,10 @@ class LightCsv
   private
 
   def read_next_data()
-    return nil unless @file
-    r = @file.read(@bufsize, @buf)
-    @ss.string = @ss.rest + @buf if r
-    return r
-  end
-
-  def eof?()
-    return (@ss.eos? and ! read_next_data)
+    if @file and @file.read(@bufsize, @buf)
+      @ss.string = @ss.rest + @buf
+    else
+      nil
+    end
   end
 end

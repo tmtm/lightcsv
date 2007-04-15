@@ -1,4 +1,4 @@
-= SimpleCSV =
+= LightCsv =
 CSV パーサ
 
 == 作者 ==
@@ -15,7 +15,7 @@ Ruby ライセンス http://www.ruby-lang.org/ja/LICENSE.txt と同等。
 
 == ダウンロード ==
 
- * http://tmtm.org/downloads/ruby/simplecsv/
+ * http://tmtm.org/downloads/ruby/lightcsv/
 
 == インストール ==
 
@@ -37,36 +37,36 @@ $ make test
 == 使用例 ==
  * CSVファイルのレコード毎にブロックを繰り返す。
 {{{
-    SimpleCSV.foreach(filename){|row| ...}
+    LightCsv.foreach(filename){|row| ...}
 }}}
    次と同じ。
 {{{
-    SimpleCSV.open(filename){|csv| csv.each{|row| ...}}
+    LightCsv.open(filename){|csv| csv.each{|row| ...}}
 }}}
 
  * CSVファイルの全レコードを返す。
 {{{
-    SimpleCSV.readlines(filename)  # => [[col1,col2,...],...]
+    LightCsv.readlines(filename)  # => [[col1,col2,...],...]
 }}}
    次と同じ。
 {{{
-    SimpleCSV.open(filename){|csv| csv.map}
+    LightCsv.open(filename){|csv| csv.map}
 }}}
 
  * CSV文字列のレコード毎にブロックを繰り返す。
 {{{
-    SimpleCSV.parse("a1,a2,..."){|row| ...}
+    LightCsv.parse("a1,a2,..."){|row| ...}
 }}}
    次と同じ。
 {{{
-    SimpleCSV.new("a1,a2,...").each{|row| ...}
+    LightCsv.new("a1,a2,...").each{|row| ...}
 }}}
 
  * CSV文字列の全レコードを返す。
 {{{
-    SimpleCSV.parse("a1,a2,...")  # => [[a1,a2,...],...]
+    LightCsv.parse("a1,a2,...")  # => [[a1,a2,...],...]
 }}}
    次と同じ。
 {{{
-    SimpleCSV.new("a1,a2,...").map
+    LightCsv.new("a1,a2,...").map
 }}}

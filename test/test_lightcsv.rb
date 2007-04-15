@@ -2,7 +2,7 @@
 # Copyright:: (C) 2007 TOMITA Masahiro <tommy@tmtm.org>
 
 require "test/unit"
-require "simplecsv"
+require "lightcsv"
 require "tempfile"
 
 class TC_LightCsv < Test::Unit::TestCase
@@ -112,7 +112,16 @@ EOS
 "1",2","3"
 EOS
     assert_equal(["a","b","c"], csv.shift)
-    assert_raises(LightCsv::MalformedCSVError){csv.shift}
+    assert_raises(LightCsv::InvalidFormat){csv.shift}
+  end
+
+  def test_shift_no_dq_end()
+    csv = LightCsv.new(<<EOS)
+"a","b","c"
+"1","2,
+EOS
+    assert_equal(["a","b","c"], csv.shift)
+    assert_raises(LightCsv::InvalidFormat){csv.shift}
   end
 
   def test_shift_lf_in_data()
