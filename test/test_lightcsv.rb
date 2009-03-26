@@ -4,6 +4,7 @@
 require "test/unit"
 require "lightcsv"
 require "tempfile"
+require "stringio"
 
 class TC_LightCsv < Test::Unit::TestCase
   def setup()
@@ -151,5 +152,13 @@ EOS
   def test_shift_comma_end()
     csv = LightCsv.new("a,b,")
     assert_equal(["a","b",""], csv.shift)
+  end
+
+  def test_over_bufsize()
+    s = StringIO.new(%|"aaa""aaa","bbb\r\n""\r\nbbb","ccc""ccc"\r\n| * 3)
+    csv = LightCsv.new(s)
+    csv.bufsize = 1
+    expect = [["aaa\"aaa","bbb\r\n\"\r\nbbb","ccc\"ccc"]] * 3
+    assert_equal expect, csv.readlines
   end
 end

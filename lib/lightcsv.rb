@@ -41,7 +41,7 @@ class LightCsv
   include Enumerable
 
   # == パースできない形式の場合に発生する例外
-  # InvalidFormat#message は処理できなかった位置から 10バイト文の文字列を返す。
+  # InvalidFormat#message は処理できなかった位置から 10バイト分の文字列を返す。
   class InvalidFormat < RuntimeError; end
 
   # ファイルの各レコード毎にブロックを繰り返す。
@@ -120,24 +120,16 @@ class LightCsv
         break
       end
       if @ss.scan(/\"/n)
-        until @ss.scan(/(?:\"\"|[^\"])*\"/n)
+        until @ss.scan(/(?:\"\"|[^\"])*\"(?=,|\r\n|\n|\r|\z)/n)
           read_next_data or raise InvalidFormat, @ss.rest[0,10]
         end
         cols << @ss.matched.chop.gsub(/\"\"/n, '"')
       else
-        col = @ss.scan(/[^\",\r\n]*/n)
-        while @ss.eos? and read_next_data
-          col << @ss.scan(/[^\",\r\n]*/n)
-        end
-        cols << col
+        cols << @ss.scan(/[^\",\r\n]*/n)
       end
       unless @ss.scan(/,/n)
-        break if @ss.scan(/\r\n/n)
-        unless @ss.rest_size < 2 and read_next_data and @ss.scan(/,/n)
-          break if @ss.scan(/\r\n|\n|\r|\z/n)
-          read_next_data
-          raise InvalidFormat, @ss.rest[0,10]
-        end
+        break if @ss.scan(/\r\n|\n|\r|\z/n)
+        raise InvalidFormat, @ss.rest[0,10]
       end
     end
     cols.clear if cols.size == 1 and cols.first.empty?
@@ -158,11 +150,25 @@ class LightCsv
 
   private
 
+  # 入力がファイルの場合、@bufsize バイト読み込んで、@ss にセットする。
+  # 行として不完全な部分は @buf に保持して次回にまわす。
+  # ファイルの最後まで達した場合は nil を返す。
   def read_next_data()
-    if @file and @file.read(@bufsize, @buf)
-      @ss.string = @ss.rest + @buf
-    else
-      nil
+    return unless @file && @buf
+    while buf = @file.read(@bufsize)
+      @buf.concat buf
+      if l = @buf.slice!(/\A.*(?:\r\n|\r(.)|\n)/mn) # \r\n の \r だけ読んでしまわないように \r. として、
+        if $1
+          @buf[0,0] = $1                            # 読みすぎた分を @buf に戻す
+          l.chop!
+        end
+        @ss.string = @ss.rest + l
+        return true
+      end
     end
+    return if @buf.empty?
+    @ss.string = @ss.rest + @buf
+    @buf = nil
+    true
   end
 end
