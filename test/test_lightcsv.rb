@@ -161,4 +161,9 @@ EOS
     expect = [["aaa\"aaa","bbb\r\n\"\r\nbbb","ccc\"ccc"]] * 3
     assert_equal expect, csv.readlines
   end
+
+  def test_large_col()
+    row = LightCsv.parse('"'+"a"*10000+'"')
+    assert_equal [["a"*10000]], row
+  end
 end

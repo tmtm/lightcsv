@@ -120,17 +120,17 @@ class LightCsv
         break
       end
       if @ss.scan(/\"/n)
-        until @ss.scan(/(?:\"\"|[^\"])*\"(?=,|\r\n|\n|\r|\z)/n)
+        until @ss.scan(/((?:\"\"|[^\"])*)\"(,|\r\n|\n|\r|\z)/n)
           read_next_data or raise InvalidFormat, @ss.rest[0,10]
         end
-        cols << @ss.matched.chop.gsub(/\"\"/n, '"')
+        cols << @ss[1].gsub(/\"\"/n, '"')
       else
-        cols << @ss.scan(/[^\",\r\n]*/n)
+        unless @ss.scan(/([^\",\r\n]*)(,|\r\n|\n|\r|\z)/n)
+          raise InvalidFormat, @ss.rest[0,10]
+        end
+        cols << @ss[1]
       end
-      unless @ss.scan(/,/n)
-        break if @ss.scan(/\r\n|\n|\r|\z/n)
-        raise InvalidFormat, @ss.rest[0,10]
-      end
+      break unless @ss[2] == ','
     end
     cols.clear if cols.size == 1 and cols.first.empty?
     cols
