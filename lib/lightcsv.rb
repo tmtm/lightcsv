@@ -25,7 +25,7 @@ require "strscan"
 # * CSVファイルの全レコードを返す。
 #     LightCsv.readlines(filename)  # => [[col1,col2,...],...]
 #   次と同じ。
-#     LightCsv.open(filename){|csv| csv.map}
+#     LightCsv.open(filename){|csv| csv.entries}
 #
 # * CSV文字列のレコード毎にブロックを繰り返す。
 #     LightCsv.parse("a1,a2,..."){|row| ...}
@@ -35,7 +35,7 @@ require "strscan"
 # * CSV文字列の全レコードを返す。
 #     LightCsv.parse("a1,a2,...")  # => [[a1,a2,...],...]
 #   次と同じ。
-#     LightCsv.new("a1,a2,...").map
+#     LightCsv.new("a1,a2,...").entries
 #
 class LightCsv
   include Enumerable
@@ -55,7 +55,7 @@ class LightCsv
   # ファイルの全レコードをレコードの配列で返す。
   def self.readlines(filename)
     self.open(filename) do |f|
-      return f.map
+      return f.entries
     end
   end
 
@@ -64,7 +64,7 @@ class LightCsv
   # ブロック引数はレコードを表す配列。
   def self.parse(string, &block)
     unless block
-      return self.new(string).map
+      return self.new(string).entries
     end
     self.new(string).each do |row|
       block.call row
@@ -145,7 +145,7 @@ class LightCsv
 
   # 現在位置以降のレコードの配列を返す。
   def readlines()
-    return map
+    return entries
   end
 
   private
