@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
 # = LightCsv
 # CSV parser
 #
-# $Id$
 # Copyright:: 2007 (C) TOMITA Masahiro <tommy@tmtm.org>
 # License:: Ruby's
 # Homepage:: http://tmtm.org/ja/ruby/lightcsv

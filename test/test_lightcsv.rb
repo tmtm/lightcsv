@@ -1,4 +1,3 @@
-# $Id$
 # Copyright:: (C) 2007 TOMITA Masahiro <tommy@tmtm.org>
 
 require "test/unit"
