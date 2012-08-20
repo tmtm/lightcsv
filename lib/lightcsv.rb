@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# coding: us-ascii
 # = LightCsv
 # CSV parser
 #
@@ -119,13 +119,13 @@ class LightCsv
         cols << ""
         break
       end
-      if @ss.scan(/\"/n)
-        until @ss.scan(/((?:\"\"|[^\"])*)\"(,|\r\n|\n|\r|\z)/n)
+      if @ss.scan(/\"/)
+        until @ss.scan(/((?:\"\"|[^\"])*)\"(,|\r\n|\n|\r|\z)/)
           read_next_data or raise InvalidFormat, @ss.rest[0,10]
         end
-        cols << @ss[1].gsub(/\"\"/n, '"')
+        cols << @ss[1].gsub(/\"\"/, '"')
       else
-        unless @ss.scan(/([^\",\r\n]*)(,|\r\n|\n|\r|\z)/n)
+        unless @ss.scan(/([^\",\r\n]*)(,|\r\n|\n|\r|\z)/)
           raise InvalidFormat, @ss.rest[0,10]
         end
         cols << @ss[1]
@@ -157,7 +157,7 @@ class LightCsv
     return unless @file && @buf
     while buf = @file.read(@bufsize)
       @buf.concat buf
-      if l = @buf.slice!(/\A.*(?:\r\n|\r(.)|\n)/mn) # \r\n の \r だけ読んでしまわないように \r. として、
+      if l = @buf.slice!(/\A.*(?:\r\n|\r(.)|\n)/m) # \r\n の \r だけ読んでしまわないように \r. として、
         if $1
           @buf[0,0] = $1                            # 読みすぎた分を @buf に戻す
           l.chop!
