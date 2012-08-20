@@ -8,60 +8,35 @@
 
 require "strscan"
 
-# == CSV のパース
-# 各レコードはカラムを要素とする配列である。
-# レコードの区切りは LF,CR,CRLF のいずれか。
-#
-# 以下が csv.rb と異なる。
-# * 空行は [nil] ではなく [] になる。
-# * 「"」で括られていない空カラムは nil ではなく "" になる。
-#
-# == 例
-# * CSVファイルのレコード毎にブロックを繰り返す。
-#     LightCsv.foreach(filename){|row| ...}
-#   次と同じ。
-#     LightCsv.open(filename){|csv| csv.each{|row| ...}}
-#
-# * CSVファイルの全レコードを返す。
-#     LightCsv.readlines(filename)  # => [[col1,col2,...],...]
-#   次と同じ。
-#     LightCsv.open(filename){|csv| csv.entries}
-#
-# * CSV文字列のレコード毎にブロックを繰り返す。
-#     LightCsv.parse("a1,a2,..."){|row| ...}
-#   次と同じ。
-#     LightCsv.new("a1,a2,...").each{|row| ...}
-#
-# * CSV文字列の全レコードを返す。
-#     LightCsv.parse("a1,a2,...")  # => [[a1,a2,...],...]
-#   次と同じ。
-#     LightCsv.new("a1,a2,...").entries
-#
+# CSV parser
 class LightCsv
   include Enumerable
 
-  # == パースできない形式の場合に発生する例外
-  # InvalidFormat#message は処理できなかった位置から 10バイト分の文字列を返す。
   class InvalidFormat < RuntimeError; end
 
-  # ファイルの各レコード毎にブロックを繰り返す。
-  # ブロック引数はレコードを表す配列。
+  # @param [String] filename Filename
+  # @yield [row]
+  # @yieldparam [Array<String>] row One record
+  # @return [void]
   def self.foreach(filename, &block)
     self.open(filename) do |f|
       f.each(&block)
     end
   end
 
-  # ファイルの全レコードをレコードの配列で返す。
+  # @param [String] filename Filename
+  # @return [Array<Array<String>>] All records.
   def self.readlines(filename)
     self.open(filename) do |f|
       return f.entries
     end
   end
 
-  # CSV文字列の全レコードをレコードの配列で返す。
-  # ブロックが与えられた場合は、レコード毎にブロックを繰り返す。
-  # ブロック引数はレコードを表す配列。
+  # @param [String] string CSV string
+  # @yield [row]
+  # @yieldparam [Array<String>] row One record
+  # @return [Array<Array<String>>] if block is unspecified
+  # @return [nil] if block is specified
   def self.parse(string, &block)
     unless block
       return self.new(string).entries
@@ -72,8 +47,11 @@ class LightCsv
     return nil
   end
 
-  # ファイルをオープンして LightCsv オブジェクトを返す。
-  # ブロックを与えた場合は LightCsv オブジェクトを引数としてブロックを実行する。
+  # @param [String] filename Filename
+  # @yield [csv]
+  # @yieldparam [LightCsv] csv LightCsv object
+  # @return [LightCsv] if block is unspecified
+  # @return [Object] block value if block is specified
   def self.open(filename, &block)
     f = File.open(filename)
     csv = self.new(f)
@@ -88,8 +66,7 @@ class LightCsv
     end
   end
 
-  # LightCsv オブジェクトを生成する。
-  # _src_ は String か IO。
+  # @param [String / IO] src CSV source
   def initialize(src)
     if src.kind_of? String
       @file = nil
@@ -103,15 +80,16 @@ class LightCsv
   end
   attr_accessor :bufsize
 
-  # LightCsv オブジェクトに関連したファイルをクローズする。
-  def close()
+  # close file
+  # @return [void]
+  def close
     @file.close if @file
   end
 
-  # 1レコードを返す。データの最後の場合は nil を返す。
-  # 空行の場合は空配列([])を返す。
-  # 空カラムは「"」で括られているか否かにかかわらず空文字列("")になる。
-  def shift()
+  # return one record.
+  # @return [Array<String>] one record. empty array for empty line.
+  # @return [nil] if end of data is reached.
+  def shift
     return nil if @ss.eos? and ! read_next_data
     cols = []
     while true
@@ -136,30 +114,31 @@ class LightCsv
     cols
   end
 
-  # 各レコード毎にブロックを繰り返す。
-  def each()
+  # iterator
+  # @yield [row]
+  # @yieldparam [Array<String>] row One record
+  def each
     while row = shift
       yield row
     end
   end
 
-  # 現在位置以降のレコードの配列を返す。
-  def readlines()
+  # Array of record
+  # @return [Array<Array<String>>] records
+  def readlines
     return entries
   end
 
   private
 
-  # 入力がファイルの場合、@bufsize バイト読み込んで、@ss にセットする。
-  # 行として不完全な部分は @buf に保持して次回にまわす。
-  # ファイルの最後まで達した場合は nil を返す。
-  def read_next_data()
+  # @return [nil] when EOF reached.
+  def read_next_data
     return unless @file && @buf
     while buf = @file.read(@bufsize)
       @buf.concat buf
-      if l = @buf.slice!(/\A.*(?:\r\n|\r(.)|\n)/m) # \r\n の \r だけ読んでしまわないように \r. として、
+      if l = @buf.slice!(/\A.*(?:\r\n|\r(.)|\n)/m)
         if $1
-          @buf[0,0] = $1                            # 読みすぎた分を @buf に戻す
+          @buf[0,0] = $1
           l.chop!
         end
         @ss.string = @ss.rest + l
