@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'lightcsv'
-  s.version = '0.2.3'
+  s.version = '0.2.4'
   s.summary = 'fast CSV parser'
   s.authors = ['Tomita Masahiro']
   s.date = '2012-08-05'
